@@ -329,6 +329,32 @@ public sealed class RelpCoreTests
     }
 
     [TestMethod]
+    public async Task SessionCloseIgnoresAcknowledgementFromCanceledTransaction()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        var serverTask = RunServerThatDelaysSyslogAckUntilCloseAsync(listener, timeout.Token);
+
+        await using var connection = new RelpConnection(IPAddress.Loopback.ToString(), port);
+        await connection.ConnectAsync(timeout.Token);
+        var session = new RelpSession(connection);
+
+        await session.OpenAsync(timeout.Token);
+        using var sendTimeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(250));
+        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() =>
+            session.SendMessageAsync(Encoding.UTF8.GetBytes("canceled payload"), sendTimeout.Token));
+
+        await session.CloseAsync(timeout.Token);
+
+        await serverTask;
+        Assert.IsFalse(session.IsActive);
+        Assert.AreEqual(0, session.PendingAcknowledgements);
+    }
+
+    [TestMethod]
     public async Task SessionSendsCloseWhenOpenResponseOmitsRelpVersionOffer()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -592,6 +618,69 @@ public sealed class RelpCoreTests
         foreach (var item in certificates)
         {
             item.Dispose();
+        }
+    }
+
+    private static async Task RunServerThatDelaysSyslogAckUntilCloseAsync(
+        TcpListener listener,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var client = await listener.AcceptTcpClientAsync(cancellationToken);
+            await using var stream = client.GetStream();
+            var parser = new RelpParser();
+            var pending = Array.Empty<byte>();
+            var buffer = new byte[4096];
+            int? delayedSyslogTransactionId = null;
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (pending.Length > 0)
+                {
+                    parser.Parse(pending);
+                    pending = Array.Empty<byte>();
+                }
+
+                while (!parser.IsComplete)
+                {
+                    var read = await stream.ReadAsync(buffer, cancellationToken);
+                    if (read == 0)
+                    {
+                        return;
+                    }
+
+                    parser.Parse(buffer.AsSpan(0, read));
+                }
+
+                pending = parser.RemainingBytes;
+                var frame = parser.ToFrame();
+                parser = new RelpParser();
+
+                switch (frame.Command)
+                {
+                    case RelpCommand.Open:
+                        await SendResponseAsync(stream, frame.TransactionId, "200 OK\nrelp_version=0\ncommands=syslog", cancellationToken);
+                        break;
+
+                    case RelpCommand.Syslog:
+                        delayedSyslogTransactionId = frame.TransactionId;
+                        break;
+
+                    case RelpCommand.Close:
+                        if (delayedSyslogTransactionId.HasValue)
+                        {
+                            await SendResponseAsync(stream, delayedSyslogTransactionId.Value, "200 OK", cancellationToken);
+                        }
+
+                        await SendResponseAsync(stream, frame.TransactionId, "200 OK", cancellationToken);
+                        return;
+                }
+            }
+        }
+        finally
+        {
+            listener.Stop();
         }
     }
 

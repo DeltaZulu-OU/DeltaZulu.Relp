@@ -143,6 +143,26 @@ public sealed class RelpSession
 
     private async Task<RelpFrameRx> ExpectSuccessfulAckAsync(int transactionId, CancellationToken cancellationToken)
     {
+        while (true)
+        {
+            var response = await ReceiveFrameAsync(cancellationToken).ConfigureAwait(false);
+            if (response.Command == RelpCommand.Response && response.TransactionId != transactionId && !_window.IsPending(response.TransactionId))
+            {
+                continue;
+            }
+
+            if (response.Command != RelpCommand.Response || response.TransactionId != transactionId || response.GetResponseCode() != 200)
+            {
+                throw new InvalidOperationException($"RELP transaction {transactionId} was not acknowledged successfully.");
+            }
+
+            _window.RemovePending(transactionId);
+            return response;
+        }
+    }
+
+    private async Task<RelpFrameRx> ReceiveFrameAsync(CancellationToken cancellationToken)
+    {
         var parser = new RelpParser();
         if (_receiveRemainder.Length > 0)
         {
@@ -156,14 +176,7 @@ public sealed class RelpSession
         }
 
         _receiveRemainder = parser.RemainingBytes;
-        var response = parser.ToFrame();
-        if (response.Command != RelpCommand.Response || response.TransactionId != transactionId || response.GetResponseCode() != 200)
-        {
-            throw new InvalidOperationException($"RELP transaction {transactionId} was not acknowledged successfully.");
-        }
-
-        _window.RemovePending(transactionId);
-        return response;
+        return parser.ToFrame();
     }
 
     private static byte[] CreateOpenOffers()
