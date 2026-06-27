@@ -5,10 +5,10 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>DeltaZulu.Relp</PackageId>
-    <Authors>RELP.Net contributors</Authors>
+    <Authors>DeltaZulu.Relp contributors</Authors>
     <Description>A .NET client-side RELP (Reliable Event Logging Protocol) library.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/zbalkan/RELP.Net</RepositoryUrl>
+    <RepositoryUrl>https://github.com/DeltaZulu-OU/DeltaZulu.Relp</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>relp;syslog;logging;client</PackageTags>
   </PropertyGroup>

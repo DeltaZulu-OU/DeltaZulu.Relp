@@ -107,7 +107,7 @@ public sealed class RelpSession
     private static byte[] CreateOpenOffers()
     {
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.1.0";
-        return Encoding.UTF8.GetBytes($"relp_version=0\nrelp_software=RELP.Net,{version},https://github.com/zbalkan/RELP.Net\ncommands=syslog");
+        return Encoding.UTF8.GetBytes($"relp_version=0\nrelp_software=DeltaZulu.Relp,{version},https://github.com/DeltaZulu-OU/DeltaZulu.Relp\ncommands=syslog");
     }
 
     private static bool ResponseIncludesOffer(RelpFrameRx response, string offerName)
