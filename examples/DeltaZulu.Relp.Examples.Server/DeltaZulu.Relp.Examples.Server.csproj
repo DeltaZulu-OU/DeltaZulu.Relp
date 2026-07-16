@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <RootNamespace>DeltaZulu.Relp.Examples.Server</RootNamespace>
+    <AssemblyName>DeltaZulu.Relp.Examples.Server</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\DeltaZulu.Relp\DeltaZulu.Relp.csproj" />

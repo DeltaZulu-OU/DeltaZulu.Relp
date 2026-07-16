@@ -1,11 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>DeltaZulu.Relp</RootNamespace>
+    <AssemblyName>DeltaZulu.Relp</AssemblyName>
     <IsPackable>true</IsPackable>
     <PackageId>DeltaZulu.Relp</PackageId>
-    <Authors>DeltaZulu.Relp contributors</Authors>
     <Description>A .NET client-side RELP (Reliable Event Logging Protocol) library.</Description>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/DeltaZulu-OU/DeltaZulu.Relp</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>relp;syslog;logging;client</PackageTags>
