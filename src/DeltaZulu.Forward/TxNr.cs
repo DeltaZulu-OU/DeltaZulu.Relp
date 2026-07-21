@@ -7,12 +7,13 @@ namespace DeltaZulu.Forward;
 /// </summary>
 public sealed class TxNr : IComparable, IComparable<TxNr>, IEquatable<TxNr>, IFormattable
 {
-    /// <summary>The minimum valid transaction number.</summary>
-    public const uint MinValue = 1;
-
     /// <summary>The maximum valid transaction number.</summary>
     public const uint MaxValue = uint.MaxValue;
 
+    /// <summary>The minimum valid transaction number.</summary>
+    public const uint MinValue = 1;
+
+    private const ulong range = (ulong)MaxValue - MinValue + 1;
     private uint _value;
 
     /// <summary>Initializes a transaction number counter starting at <see cref="MinValue" />.</summary>
@@ -34,6 +35,9 @@ public sealed class TxNr : IComparable, IComparable<TxNr>, IEquatable<TxNr>, IFo
     /// <summary>Gets the current transaction number.</summary>
     public uint Value => Volatile.Read(ref _value);
 
+    /// <summary>Converts an underlying value to a transaction number.</summary>
+    public static explicit operator TxNr(uint value) => new(value);
+
     /// <summary>Converts a transaction number to its underlying value.</summary>
     public static implicit operator uint(TxNr txNr)
     {
@@ -41,8 +45,10 @@ public sealed class TxNr : IComparable, IComparable<TxNr>, IEquatable<TxNr>, IFo
         return txNr.Value;
     }
 
-    /// <summary>Converts an underlying value to a transaction number.</summary>
-    public static explicit operator TxNr(uint value) => new(value);
+    public static bool operator !=(TxNr left, TxNr right)
+    {
+        return !(left == right);
+    }
 
     /// <summary>Advances a transaction number by an offset, wrapping around <see cref="MaxValue" />.</summary>
     public static TxNr operator +(TxNr txNr, uint offset)
@@ -57,6 +63,36 @@ public sealed class TxNr : IComparable, IComparable<TxNr>, IEquatable<TxNr>, IFo
         ArgumentNullException.ThrowIfNull(txNr);
         txNr.Move(1);
         return txNr;
+    }
+
+    public static bool operator <(TxNr left, TxNr right)
+    {
+        return left.CompareTo(right) < 0;
+    }
+
+    public static bool operator <=(TxNr left, TxNr right)
+    {
+        return left.CompareTo(right) <= 0;
+    }
+
+    public static bool operator ==(TxNr left, TxNr right)
+    {
+        if (ReferenceEquals(left, null))
+        {
+            return ReferenceEquals(right, null);
+        }
+
+        return left.Equals(right);
+    }
+
+    public static bool operator >(TxNr left, TxNr right)
+    {
+        return left.CompareTo(right) > 0;
+    }
+
+    public static bool operator >=(TxNr left, TxNr right)
+    {
+        return left.CompareTo(right) >= 0;
     }
 
     /// <summary>Parses a transaction number from its decimal string representation.</summary>
@@ -119,7 +155,6 @@ public sealed class TxNr : IComparable, IComparable<TxNr>, IEquatable<TxNr>, IFo
     private static uint Shift(uint value, uint offset)
     {
         var zeroBased = (ulong)(value - MinValue);
-        var range = (ulong)MaxValue - MinValue + 1;
         var shifted = (zeroBased + offset) % range;
         return (uint)shifted + MinValue;
     }
