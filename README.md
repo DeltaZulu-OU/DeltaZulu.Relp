@@ -1,7 +1,7 @@
 # DeltaZulu.Forward
 
 DeltaZulu.Forward is a .NET implementation of the client (forwarder) and
-collector (server) sides of **DeltaZulu.Forward**, DeltaZulu's proprietary
+collector (server) sides of **rsyslog's RELP**, DeltaZulu's proprietary
 reliable log-forwarding transport. The naming follows the fluentd Forward
 protocol convention: a product-scoped name for a product-scoped protocol.
 DeltaZulu.Forward is **derived from RELP's design but is not wire-compatible
