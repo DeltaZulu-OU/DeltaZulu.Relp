@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>DeltaZulu.Forward.Examples.Server</RootNamespace>
+    <AssemblyName>DeltaZulu.Forward.Examples.Server</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DeltaZulu.Forward\DeltaZulu.Forward.csproj" />
+    <PackageReference Include="ZstdSharp.Port" />
+  </ItemGroup>
+</Project>

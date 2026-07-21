@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="src/DeltaZulu.Relp/DeltaZulu.Relp.csproj" />
-  <Project Path="src/DeltaZulu.Relp.Tests/DeltaZulu.Relp.Tests.csproj" />
-  <Project Path="examples/DeltaZulu.Relp.Examples.Client/DeltaZulu.Relp.Examples.Client.csproj" />
-  <Project Path="examples/DeltaZulu.Relp.Examples.Server/DeltaZulu.Relp.Examples.Server.csproj" />
-</Solution>
