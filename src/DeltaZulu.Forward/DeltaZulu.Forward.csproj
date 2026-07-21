@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>DeltaZulu.Forward</PackageId>
     <Description>A .NET client-side implementation of DeltaZulu.Forward, a proprietary reliable log-forwarding protocol derived from RELP's design but not wire-compatible with it.</Description>
-    <RepositoryUrl>https://github.com/DeltaZulu-OU/DeltaZulu.Relp</RepositoryUrl>
+    <RepositoryUrl>https://github.com/DeltaZulu-OU/DeltaZulu.Forward</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>deltazulu-forward;relp;syslog;logging;client</PackageTags>
   </PropertyGroup>
@@ -16,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE.txt" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>
