@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
@@ -959,4 +960,235 @@ internal sealed class ThrowingReadStream(Exception exception) : Stream
     public override void SetLength(long value) => throw new NotSupportedException();
 
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+}
+
+[TestClass]
+public sealed class ForwardLogBatchCodecTests
+{
+    private static readonly DateTimeOffset SampleCreatedAt =
+        DateTimeOffset.Parse("2026-07-23T12:34:56.1234567+02:00", CultureInfo.InvariantCulture);
+
+    private static ForwardLogRecord MakeRecord(IReadOnlyDictionary<string, object?> fields, string? profileId = null, string recordId = "record-1") => new()
+    {
+        DeliveryId = "delivery-1",
+        AgentId = "agent-1",
+        SourceId = "source-1",
+        ProfileId = profileId,
+        RecordId = recordId,
+        CreatedAt = SampleCreatedAt,
+        Fields = fields,
+    };
+
+    private static ForwardLogBatch MakeBatch(Guid batchId, params ForwardLogRecord[] records) => new()
+    {
+        BatchId = batchId,
+        Records = records,
+    };
+
+    private static object? RoundTripSingleField(object? value)
+    {
+        var batch = MakeBatch(Guid.NewGuid(), MakeRecord(new Dictionary<string, object?> { ["v"] = value }));
+        var decoded = ForwardLogBatchCodec.Decode(ForwardLogBatchCodec.Encode(batch));
+        return decoded.Records[0].Fields["v"];
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsBoolScalar()
+    {
+        var decoded = RoundTripSingleField(true);
+        Assert.IsInstanceOfType<bool>(decoded);
+        Assert.AreEqual(true, decoded);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsLongScalar()
+    {
+        var decoded = RoundTripSingleField(42L);
+        Assert.IsInstanceOfType<long>(decoded);
+        Assert.AreEqual(42L, decoded);
+    }
+
+    [TestMethod]
+    public void CodecNormalizesIntToLongScalar()
+    {
+        var decoded = RoundTripSingleField(42);
+        Assert.IsInstanceOfType<long>(decoded);
+        Assert.AreEqual(42L, decoded);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsRealScalar()
+    {
+        var decoded = RoundTripSingleField(3.14159);
+        Assert.IsInstanceOfType<double>(decoded);
+        Assert.AreEqual(3.14159, decoded);
+    }
+
+    [TestMethod]
+    public void CodecNormalizesFloatToDoubleScalar()
+    {
+        var decoded = RoundTripSingleField(2.5f);
+        Assert.IsInstanceOfType<double>(decoded);
+        Assert.AreEqual(2.5, decoded);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsStringScalar()
+    {
+        var decoded = RoundTripSingleField("hello, forward");
+        Assert.IsInstanceOfType<string>(decoded);
+        Assert.AreEqual("hello, forward", decoded);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsDateTimeScalarPreservingOffset()
+    {
+        var original = DateTimeOffset.Parse("2026-01-15T08:09:10.1234567-05:00", CultureInfo.InvariantCulture);
+        var decoded = RoundTripSingleField(original);
+
+        Assert.IsInstanceOfType<DateTimeOffset>(decoded);
+        var typed = (DateTimeOffset)decoded!;
+        Assert.AreEqual(original, typed);
+        Assert.AreEqual(original.Offset, typed.Offset);
+        Assert.AreEqual(original.Ticks, typed.Ticks);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsTimespanScalar()
+    {
+        var original = new TimeSpan(1, 2, 3, 4, 5);
+        var decoded = RoundTripSingleField(original);
+        Assert.IsInstanceOfType<TimeSpan>(decoded);
+        Assert.AreEqual(original, decoded);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsGuidScalar()
+    {
+        var original = Guid.NewGuid();
+        var decoded = RoundTripSingleField(original);
+        Assert.IsInstanceOfType<Guid>(decoded);
+        Assert.AreEqual(original, decoded);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsDecimalScalarPreservingScale()
+    {
+        var original = 123.4500m;
+        var decoded = RoundTripSingleField(original);
+        Assert.IsInstanceOfType<decimal>(decoded);
+        Assert.AreEqual(original, decoded);
+        Assert.AreEqual(original.ToString(CultureInfo.InvariantCulture), ((decimal)decoded!).ToString(CultureInfo.InvariantCulture));
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsNullScalar()
+    {
+        var decoded = RoundTripSingleField(null);
+        Assert.IsNull(decoded);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsDynamicMap()
+    {
+        var original = new Dictionary<string, object?>
+        {
+            ["nested-string"] = "inner",
+            ["nested-long"] = 7L,
+            ["nested-null"] = null,
+        };
+
+        var decoded = RoundTripSingleField(original);
+        Assert.IsInstanceOfType<IReadOnlyDictionary<string, object?>>(decoded);
+        var typed = (IReadOnlyDictionary<string, object?>)decoded!;
+        Assert.AreEqual("inner", typed["nested-string"]);
+        Assert.AreEqual(7L, typed["nested-long"]);
+        Assert.IsNull(typed["nested-null"]);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsDynamicArray()
+    {
+        var original = new List<object?> { 1, "two", 3.0, null };
+        var decoded = RoundTripSingleField(original);
+
+        Assert.IsInstanceOfType<IReadOnlyList<object?>>(decoded);
+        var typed = (IReadOnlyList<object?>)decoded!;
+        Assert.AreEqual(4, typed.Count);
+        Assert.AreEqual(1L, typed[0]);
+        Assert.AreEqual("two", typed[1]);
+        Assert.AreEqual(3.0, typed[2]);
+        Assert.IsNull(typed[3]);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsNestedDynamicMapsAndArrays()
+    {
+        var original = new Dictionary<string, object?>
+        {
+            ["tags"] = new List<object?> { "a", "b" },
+            ["nested"] = new Dictionary<string, object?>
+            {
+                ["deep"] = new List<object?>
+                {
+                    new Dictionary<string, object?> { ["k"] = 1 },
+                },
+            },
+        };
+
+        var decoded = RoundTripSingleField(original);
+        var typed = (IReadOnlyDictionary<string, object?>)decoded!;
+        var tags = (IReadOnlyList<object?>)typed["tags"]!;
+        Assert.AreEqual("a", tags[0]);
+        Assert.AreEqual("b", tags[1]);
+
+        var nested = (IReadOnlyDictionary<string, object?>)typed["nested"]!;
+        var deep = (IReadOnlyList<object?>)nested["deep"]!;
+        var deepMap = (IReadOnlyDictionary<string, object?>)deep[0]!;
+        Assert.AreEqual(1L, deepMap["k"]);
+    }
+
+    [TestMethod]
+    public void CodecThrowsForUnsupportedFieldType()
+    {
+        var batch = MakeBatch(Guid.NewGuid(), MakeRecord(new Dictionary<string, object?> { ["v"] = new Uri("https://example.invalid") }));
+        Assert.ThrowsExactly<NotSupportedException>(() => ForwardLogBatchCodec.Encode(batch));
+    }
+
+    [TestMethod]
+    public void CodecPreservesProfileIdNullAndNonNull()
+    {
+        var batch = MakeBatch(
+            Guid.NewGuid(),
+            MakeRecord(new Dictionary<string, object?>(), profileId: null, recordId: "r1"),
+            MakeRecord(new Dictionary<string, object?>(), profileId: "profile-9", recordId: "r2"));
+
+        var decoded = ForwardLogBatchCodec.Decode(ForwardLogBatchCodec.Encode(batch));
+
+        Assert.IsNull(decoded.Records[0].ProfileId);
+        Assert.AreEqual("profile-9", decoded.Records[1].ProfileId);
+    }
+
+    [TestMethod]
+    public void CodecRoundTripsBatchAndRecordIdentityFields()
+    {
+        var batchId = Guid.NewGuid();
+        var batch = MakeBatch(
+            batchId,
+            MakeRecord(new Dictionary<string, object?> { ["a"] = 1L }, recordId: "r1"),
+            MakeRecord(new Dictionary<string, object?> { ["b"] = 2L }, recordId: "r2"));
+
+        var decoded = ForwardLogBatchCodec.Decode(ForwardLogBatchCodec.Encode(batch));
+
+        Assert.AreEqual(batchId, decoded.BatchId);
+        Assert.AreEqual(2, decoded.Records.Count);
+        Assert.AreEqual("r1", decoded.Records[0].RecordId);
+        Assert.AreEqual("r2", decoded.Records[1].RecordId);
+        Assert.AreEqual("delivery-1", decoded.Records[0].DeliveryId);
+        Assert.AreEqual("agent-1", decoded.Records[0].AgentId);
+        Assert.AreEqual("source-1", decoded.Records[0].SourceId);
+        Assert.AreEqual(SampleCreatedAt, decoded.Records[0].CreatedAt);
+        Assert.AreEqual(1L, decoded.Records[0].Fields["a"]);
+        Assert.AreEqual(2L, decoded.Records[1].Fields["b"]);
+    }
 }

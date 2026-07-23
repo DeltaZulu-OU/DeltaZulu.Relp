@@ -237,7 +237,7 @@ public sealed class ForwardSession : IAsyncDisposable
     public Task<Guid> SendRawEnvelopeAsync(byte[] payload, CancellationToken cancellationToken = default) =>
         SendBatchAsync(ForwardFrameType.RawEnvelope, payload, cancellationToken);
 
-    /// <summary>Sends one Avro-encoded typed batch and waits for its durable-commit acknowledgement.</summary>
+    /// <summary>Sends one MessagePack-encoded <c>ForwardLogBatch</c> and waits for its durable-commit acknowledgement.</summary>
     public Task<Guid> SendTypedBatchAsync(byte[] payload, CancellationToken cancellationToken = default) =>
         SendBatchAsync(ForwardFrameType.TypedBatch, payload, cancellationToken);
 

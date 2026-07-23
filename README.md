@@ -19,8 +19,8 @@ A prior iteration of this library implemented literal RELP framing
 (`txnr command datalen data\n`, `rsp` response frames, the `open`/`close`/
 `syslog` command set). That design was superseded: RELP's text framing and
 `librelp` wire compatibility exist to interoperate with the rsyslog
-ecosystem, but DeltaZulu.Forward's payload is already Avro-encoded catalog
-data with no syslog assumptions, so that interop guarantee buys nothing here
+ecosystem, but DeltaZulu.Forward's payload is already MessagePack-encoded
+catalog data with no syslog assumptions, so that interop guarantee buys nothing here
 while still costing a weaker framing model (ASCII header parsing, no
 integrity check, no typed handshake). Interop with rsyslog-world or fluentd
 peers is a non-goal on this channel; raw ingestion from such sources is a
@@ -69,7 +69,7 @@ transport beneath the framing, not woven into the protocol's own handshake.
 | Frame type | Direction | Purpose |
 | --- | --- | --- |
 | `Hello` / `HelloAck` | forwarder → collector / reply | Typed handshake: protocol version, catalog version, schema fingerprints, compression, window sizing, session resumption. |
-| `TypedBatch` | forwarder → collector | One Avro-encoded typed batch, identified by a batch UUID. |
+| `TypedBatch` | forwarder → collector | One MessagePack-encoded `ForwardLogBatch`, identified by a batch UUID. |
 | `RawEnvelope` | forwarder → collector | One raw batch (bytes plus source metadata) for a source parsed at the collector tier. |
 | `SchemaRequest` / `SchemaResponse` | either direction | Resolves schema bytes for a fingerprint the receiver hasn't seen. |
 | `DeadLetterForward` | either direction | Forwards a batch that failed parsing or validation, with its original bytes and an error reason. |
@@ -77,7 +77,7 @@ transport beneath the framing, not woven into the protocol's own handshake.
 | `Control` | either direction | Window-adjustment or throttle (backpressure) signaling. |
 | `Close` / `CloseAck` | either direction / reply | Orderly session shutdown. |
 
-One Avro batch per frame: a batch is never split across frames, and a frame
+One typed batch per frame: a batch is never split across frames, and a frame
 never carries more than one independently committable batch.
 
 ## Projects

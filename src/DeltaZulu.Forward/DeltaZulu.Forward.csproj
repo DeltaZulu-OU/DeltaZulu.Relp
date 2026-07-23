@@ -10,6 +10,7 @@
     <PackageTags>deltazulu-forward;relp;syslog;logging;client</PackageTags>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="MessagePack" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="System.IO.Hashing" />

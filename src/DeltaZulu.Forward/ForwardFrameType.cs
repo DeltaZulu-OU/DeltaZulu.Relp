@@ -9,7 +9,7 @@ public enum ForwardFrameType : byte
     /// <summary>Server-to-client handshake response: negotiated parameters, granted windows, and any unrecognized schema fingerprints.</summary>
     HelloAck = 1,
 
-    /// <summary>Carries one Avro-encoded typed batch, identified by a batch UUID for deduplication.</summary>
+    /// <summary>Carries one MessagePack-encoded <c>ForwardLogBatch</c>, identified by a batch UUID for deduplication.</summary>
     TypedBatch = 2,
 
     /// <summary>Carries one raw-envelope batch (bytes plus source metadata) for a source parsed at the collector tier.</summary>
