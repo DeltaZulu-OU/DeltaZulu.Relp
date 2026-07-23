@@ -42,7 +42,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          source_version="$(dotnet msbuild src/DeltaZulu.Forward/DeltaZulu.Forward.csproj -getProperty:Version -nologo | tail -n 1)"
+
+          source_version="$(
+            dotnet msbuild \
+              src/DeltaZulu.Forward/DeltaZulu.Forward.csproj \
+              -getProperty:Version \
+              -nologo |
+            tail -n 1
+          )"
+
           if ! [[ "$source_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
             echo "Version '$source_version' is not a supported SemVer package version." >&2
             exit 1
@@ -50,6 +58,7 @@ jobs:
 
           if [[ "${{ github.event_name }}" == "push" ]]; then
             tag_version="${GITHUB_REF_NAME#v}"
+
             if [[ "$tag_version" != "$source_version" ]]; then
               echo "Tag version '$tag_version' does not match source version '$source_version'." >&2
               exit 1
@@ -59,18 +68,34 @@ jobs:
           echo "package_version=$source_version" >> "$GITHUB_OUTPUT"
 
       - name: Restore locked dependencies
-        run: dotnet restore --locked-mode
+        run: dotnet restore DeltaZulu.Forward.slnx --locked-mode
 
       - name: Build solution
-        run: dotnet build DeltaZulu.Forward.slnx --configuration Release --no-restore
+        run: >
+          dotnet build
+          DeltaZulu.Forward.slnx
+          --configuration Release
+          --no-restore
 
       - name: Run tests
-        run: dotnet test --configuration Release --no-build --no-restore
+        run: >
+          dotnet test
+          tests/DeltaZulu.Forward.Tests/DeltaZulu.Forward.Tests.csproj
+          --configuration Release
+          --no-build
+          --no-restore
 
       - name: Pack library
         env:
           PACKAGE_VERSION: ${{ steps.version.outputs.package_version }}
-        run: dotnet pack --configuration Release --no-build --no-restore --output "$PACKAGE_OUTPUT" /p:PackageVersion="$PACKAGE_VERSION"
+        run: >
+          dotnet pack
+          src/DeltaZulu.Forward/DeltaZulu.Forward.csproj
+          --configuration Release
+          --no-build
+          --no-restore
+          --output "$PACKAGE_OUTPUT"
+          /p:PackageVersion="$PACKAGE_VERSION"
 
       - name: Inspect package contents
         env:
@@ -78,12 +103,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           package="$PACKAGE_OUTPUT/DeltaZulu.Forward.$PACKAGE_VERSION.nupkg"
+
+          test -f "$package"
           unzip -l "$package"
-          unzip -Z1 "$package" | grep -Fx README.md
-          unzip -Z1 "$package" | grep -Fx LICENSE.txt
-          unzip -Z1 "$package" | grep -Fx 'lib/net10.0/DeltaZulu.Forward.dll'
-          ! unzip -Z1 "$package" | grep -E '(^|/)(DeltaZulu\.Forward\.Tests|DeltaZulu\.Forward\.Examples)(/|\.)'
+
+          unzip -Z1 "$package" |
+            grep -Fx README.md
+
+          unzip -Z1 "$package" |
+            grep -Fx LICENSE.txt
+
+          unzip -Z1 "$package" |
+            grep -Fx 'lib/net10.0/DeltaZulu.Forward.dll'
+
+          ! unzip -Z1 "$package" |
+            grep -E '(^|/)(DeltaZulu\.Forward\.Tests|DeltaZulu\.Forward\.Examples)(/|\.)'
 
       - name: Publish package to GitHub Packages
         env:
@@ -91,9 +127,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           config="$RUNNER_TEMP/github-packages-nuget.config"
-          dotnet new nugetconfig --output "$RUNNER_TEMP" --force
+
+          dotnet new nugetconfig \
+            --output "$RUNNER_TEMP" \
+            --force
+
           mv "$RUNNER_TEMP/nuget.config" "$config"
+
           dotnet nuget add source \
             --username "${{ github.actor }}" \
             --password "$GITHUB_TOKEN" \
@@ -101,6 +143,7 @@ jobs:
             --name github \
             --configfile "$config" \
             "$GITHUB_NUGET_SOURCE"
+
           dotnet nuget push "$PACKAGE_OUTPUT"/*.nupkg \
             --api-key "$GITHUB_TOKEN" \
             --configfile "$config" \
