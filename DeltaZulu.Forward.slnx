@@ -1,6 +1,6 @@
 <Solution>
   <Project Path="src/DeltaZulu.Forward/DeltaZulu.Forward.csproj" />
-  <Project Path="src/DeltaZulu.Forward.Tests/DeltaZulu.Forward.Tests.csproj" />
+  <Project Path="tests/DeltaZulu.Forward.Tests/DeltaZulu.Forward.Tests.csproj" />
   <Project Path="examples/DeltaZulu.Forward.Examples.Client/DeltaZulu.Forward.Examples.Client.csproj" />
   <Project Path="examples/DeltaZulu.Forward.Examples.Server/DeltaZulu.Forward.Examples.Server.csproj" />
 </Solution>

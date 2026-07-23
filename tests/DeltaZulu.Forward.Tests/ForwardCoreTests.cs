@@ -32,7 +32,7 @@ public sealed class ForwardCoreTests
         var decoded = ForwardBatchEnvelope.Decode(envelope.Encode());
 
         Assert.AreEqual(envelope.BatchId, decoded.BatchId);
-        CollectionAssert.AreEqual(envelope.Payload, decoded.Payload);
+        Assert.AreSequenceEqual(envelope.Payload, decoded.Payload);
     }
 
     [TestMethod]
@@ -104,10 +104,10 @@ public sealed class ForwardCoreTests
     public void CreditWindowAdjustCapacityGrowsAndWakesWaiters()
     {
         var window = new ForwardCreditWindow(1);
-        window.AcquireAsync().GetAwaiter().GetResult();
+        window.AcquireAsync(TestContext.CancellationToken).GetAwaiter().GetResult();
         Assert.AreEqual(0, window.Available);
 
-        var waiterTask = window.AcquireAsync();
+        var waiterTask = window.AcquireAsync(TestContext.CancellationToken);
         Assert.IsFalse(waiterTask.IsCompleted);
 
         window.AdjustCapacity(2);
@@ -130,10 +130,10 @@ public sealed class ForwardCoreTests
     public async Task CreditWindowBlocksUntilReleased()
     {
         var window = new ForwardCreditWindow(1);
-        await window.AcquireAsync();
+        await window.AcquireAsync(TestContext.CancellationToken);
 
-        var blocked = window.AcquireAsync();
-        await Task.Delay(50);
+        var blocked = window.AcquireAsync(TestContext.CancellationToken);
+        await Task.Delay(50, TestContext.CancellationToken);
         Assert.IsFalse(blocked.IsCompleted);
 
         window.Release();
@@ -186,7 +186,7 @@ public sealed class ForwardCoreTests
 
         Assert.AreEqual(deadLetter.OriginalBatchId, decoded.OriginalBatchId);
         Assert.AreEqual(deadLetter.Reason, decoded.Reason);
-        CollectionAssert.AreEqual(deadLetter.OriginalPayload, decoded.OriginalPayload);
+        Assert.AreSequenceEqual(deadLetter.OriginalPayload, decoded.OriginalPayload);
     }
 
     [TestMethod]
@@ -211,7 +211,7 @@ public sealed class ForwardCoreTests
 
         Assert.AreEqual(2u, frame.TransactionNumber);
         Assert.AreEqual(ForwardFrameType.Ack, frame.FrameType);
-        CollectionAssert.AreEqual(second, buffer.ToArray());
+        Assert.AreSequenceEqual(second, buffer.ToArray());
     }
 
     [TestMethod]
@@ -248,7 +248,7 @@ public sealed class ForwardCoreTests
     {
         var reader = PipeReader.Create(new ThrowingReadStream(new InvalidOperationException("network failed")));
 
-        var ex = await Assert.ThrowsExactlyAsync<IOException>(() => ForwardFrameReader.ReadFrameAsync(reader, ForwardParserOptions.Default).AsTask());
+        var ex = await Assert.ThrowsExactlyAsync<IOException>(() => ForwardFrameReader.ReadFrameAsync(reader, ForwardParserOptions.Default, TestContext.CancellationToken).AsTask());
 
         Assert.AreEqual("Unable to read from the DeltaZulu.Forward connection.", ex.Message);
         Assert.IsInstanceOfType<InvalidOperationException>(ex.InnerException);
@@ -261,7 +261,7 @@ public sealed class ForwardCoreTests
         var frame = ForwardFrameTx.FromFrameType(ForwardFrameType.Close);
         var bytes = frame.ToByteArray(7);
 
-        Assert.AreEqual(ForwardFrameHeader.EncodedLength, bytes.Length);
+        Assert.HasCount(ForwardFrameHeader.EncodedLength, bytes);
         var header = ForwardFrameHeader.Decode(bytes);
         Assert.AreEqual(ForwardFrameType.Close, header.FrameType);
         Assert.AreEqual(7u, header.TransactionNumber);
@@ -284,7 +284,7 @@ public sealed class ForwardCoreTests
         Assert.AreEqual(ack.GrantedWindowSize, decoded.GrantedWindowSize);
         Assert.AreEqual(ack.DedupWindowSize, decoded.DedupWindowSize);
         Assert.AreEqual(ack.CompressionSelected, decoded.CompressionSelected);
-        CollectionAssert.AreEqual(ack.UnknownSchemaFingerprints.ToArray(), decoded.UnknownSchemaFingerprints.ToArray());
+        Assert.AreSequenceEqual(ack.UnknownSchemaFingerprints.ToArray(), decoded.UnknownSchemaFingerprints.ToArray());
     }
 
     [TestMethod]
@@ -299,7 +299,7 @@ public sealed class ForwardCoreTests
         Assert.AreEqual(offer.RequestedWindowSize, decoded.RequestedWindowSize);
         Assert.AreEqual(offer.DedupWindowSize, decoded.DedupWindowSize);
         Assert.AreEqual(offer.CompressionOffered, decoded.CompressionOffered);
-        CollectionAssert.AreEqual(offer.KnownSchemaFingerprints.ToArray(), decoded.KnownSchemaFingerprints.ToArray());
+        Assert.AreSequenceEqual(offer.KnownSchemaFingerprints.ToArray(), decoded.KnownSchemaFingerprints.ToArray());
     }
 
     [TestMethod]
@@ -329,7 +329,7 @@ public sealed class ForwardCoreTests
 
         Assert.IsTrue(parser.IsComplete);
         Assert.AreEqual(2u, parser.TransactionNumber);
-        CollectionAssert.AreEqual(second, parser.RemainingBytes);
+        Assert.AreSequenceEqual(second, parser.RemainingBytes);
     }
 
     [TestMethod]
@@ -368,7 +368,7 @@ public sealed class ForwardCoreTests
         var decodedResponse = ForwardSchemaResponse.Decode(response.Encode());
         Assert.AreEqual(response.SchemaFingerprint, decodedResponse.SchemaFingerprint);
         Assert.AreEqual(response.Found, decodedResponse.Found);
-        CollectionAssert.AreEqual(response.SchemaBytes, decodedResponse.SchemaBytes);
+        Assert.AreSequenceEqual(response.SchemaBytes, decodedResponse.SchemaBytes);
     }
 
     [TestMethod]
@@ -395,7 +395,7 @@ public sealed class ForwardCoreTests
 
         var send3 = session.SendTypedBatchAsync([3], timeout.Token);
         await Task.Delay(100, timeout.Token);
-        Assert.AreEqual(2, arrived.Count, "third batch must not be sent until the window frees a credit");
+        Assert.HasCount(2, arrived, "third batch must not be sent until the window frees a credit");
         Assert.AreEqual(0, session.CreditWindow.Available);
 
         releaseFirstAck.TrySetResult();
@@ -521,7 +521,7 @@ public sealed class ForwardCoreTests
         Assert.AreEqual(ForwardFrameType.Ack, secondAck.FrameType);
         var secondOutcome = ForwardAckCodec.Decode(secondAck.Payload);
         Assert.IsTrue(secondOutcome.Committed);
-        StringAssert.Contains(secondOutcome.Detail, "duplicate");
+        Assert.Contains("duplicate", secondOutcome!.Detail!);
 
         await connection.WriteFrameAsync(ForwardFrameTx.FromFrameType(ForwardFrameType.Close), 4, timeout.Token);
         var closeAck = await connection.ReadFrameAsync(ForwardParserOptions.Default, timeout.Token);
@@ -563,7 +563,7 @@ public sealed class ForwardCoreTests
             var session = new ForwardSession(connection);
 
             var ex = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => session.OpenAsync(timeout.Token));
-            StringAssert.Contains(ex.Message, "catalog version not supported");
+            Assert.Contains("catalog version not supported", ex.Message);
             await serverTask;
         }
         finally
@@ -626,7 +626,7 @@ public sealed class ForwardCoreTests
     }
 
     [TestMethod]
-    public void WindowFaultAllFaultsEveryPendingTask()
+    public async Task WindowFaultAllFaultsEveryPendingTask()
     {
         var window = new ForwardWindow();
         var first = window.RegisterPending(1);
@@ -634,8 +634,8 @@ public sealed class ForwardCoreTests
 
         window.FaultAll(new IOException("connection lost"));
 
-        Assert.ThrowsExactly<IOException>(() => first.GetAwaiter().GetResult());
-        Assert.ThrowsExactly<IOException>(() => second.GetAwaiter().GetResult());
+        await Assert.ThrowsExactlyAsync<IOException>(() => first);
+        await Assert.ThrowsExactlyAsync<IOException>(() => second);
         Assert.AreEqual(0, window.Size);
     }
 
@@ -926,6 +926,8 @@ public sealed class ForwardCoreTests
         await stream.WriteAsync(frame.ToByteArray(transactionNumber), cancellationToken);
         await stream.FlushAsync(cancellationToken);
     }
+
+    public TestContext TestContext { get; set; }
 }
 
 internal sealed class ThrowingReadStream(Exception exception) : Stream

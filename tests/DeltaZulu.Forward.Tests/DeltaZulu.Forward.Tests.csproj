@@ -11,6 +11,6 @@
     <PackageReference Include="MSTest.TestFramework" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DeltaZulu.Forward\DeltaZulu.Forward.csproj" />
+    <ProjectReference Include="..\..\src\DeltaZulu.Forward\DeltaZulu.Forward.csproj" />
   </ItemGroup>
 </Project>

@@ -27,13 +27,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
@@ -59,18 +59,18 @@ jobs:
           echo "package_version=$source_version" >> "$GITHUB_OUTPUT"
 
       - name: Restore locked dependencies
-        run: dotnet restore DeltaZulu.Forward.slnx --locked-mode
+        run: dotnet restore --locked-mode
 
       - name: Build solution
         run: dotnet build DeltaZulu.Forward.slnx --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test src/DeltaZulu.Forward.Tests/DeltaZulu.Forward.Tests.csproj --configuration Release --no-build --no-restore
+        run: dotnet test --configuration Release --no-build --no-restore
 
       - name: Pack library
         env:
           PACKAGE_VERSION: ${{ steps.version.outputs.package_version }}
-        run: dotnet pack src/DeltaZulu.Forward/DeltaZulu.Forward.csproj --configuration Release --no-build --no-restore --output "$PACKAGE_OUTPUT" /p:PackageVersion="$PACKAGE_VERSION"
+        run: dotnet pack --configuration Release --no-build --no-restore --output "$PACKAGE_OUTPUT" /p:PackageVersion="$PACKAGE_VERSION"
 
       - name: Inspect package contents
         env:
