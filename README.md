@@ -1,4 +1,5 @@
 # DeltaZulu.Forward
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FDeltaZulu-OU%2FDeltaZulu.Forward.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FDeltaZulu-OU%2FDeltaZulu.Forward?ref=badge_shield)
 
 DeltaZulu.Forward is a .NET implementation of the client (forwarder) and
 collector (server) sides of **rsyslog's RELP**, DeltaZulu's proprietary
@@ -259,3 +260,6 @@ without silently dropping batches when a session drops.
   would have to implement forever, and it resurrects exactly the type
   reconstruction divergence this protocol exists to avoid. Handle outages
   with spooling and replay at the caller's transport-adapter layer instead.
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FDeltaZulu-OU%2FDeltaZulu.Forward.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FDeltaZulu-OU%2FDeltaZulu.Forward?ref=badge_large)
