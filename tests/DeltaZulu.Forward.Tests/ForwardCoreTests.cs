@@ -972,7 +972,8 @@ public sealed class ForwardLogBatchCodecTests
     {
         DeliveryId = "delivery-1",
         AgentId = "agent-1",
-        SourceId = "source-1",
+        SourceType = "source-type-1",
+        SourceName = "source-name-1",
         ProfileId = profileId,
         RecordId = recordId,
         CreatedAt = SampleCreatedAt,
@@ -1186,7 +1187,8 @@ public sealed class ForwardLogBatchCodecTests
         Assert.AreEqual("r2", decoded.Records[1].RecordId);
         Assert.AreEqual("delivery-1", decoded.Records[0].DeliveryId);
         Assert.AreEqual("agent-1", decoded.Records[0].AgentId);
-        Assert.AreEqual("source-1", decoded.Records[0].SourceId);
+        Assert.AreEqual("source-type-1", decoded.Records[0].SourceType);
+        Assert.AreEqual("source-name-1", decoded.Records[0].SourceName);
         Assert.AreEqual(SampleCreatedAt, decoded.Records[0].CreatedAt);
         Assert.AreEqual(1L, decoded.Records[0].Fields["a"]);
         Assert.AreEqual(2L, decoded.Records[1].Fields["b"]);

@@ -16,11 +16,23 @@ public sealed record ForwardLogRecord
     /// <summary>Gets the identifier of the agent that produced this record.</summary>
     public required string AgentId { get; init; }
 
-    /// <summary>Gets the identifier of the source this record was read from.</summary>
-    public required string SourceId { get; init; }
+    /// <summary>Gets the type of the source this record was read from.</summary>
+    public required string SourceType { get; init; }
+
+    /// <summary>Gets the name of the source this record was read from.</summary>
+    public required string SourceName { get; init; }
 
     /// <summary>Gets the identifier of the profile that shaped this record, if any.</summary>
     public string? ProfileId { get; init; }
+
+    /// <summary>Gets the version of the profile that shaped this record, if any.</summary>
+    public string? ProfileVersion { get; init; }
+
+    /// <summary>Gets the platform of the agent that produced this record, if known.</summary>
+    public string? Platform { get; init; }
+
+    /// <summary>Gets the hostname of the agent that produced this record, if known.</summary>
+    public string? Hostname { get; init; }
 
     /// <summary>Gets the identifier of this record, unique within its batch.</summary>
     public required string RecordId { get; init; }
